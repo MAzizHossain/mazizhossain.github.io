@@ -574,6 +574,75 @@ function closeLightbox() {
 
 
 // =========================================================
+// Discourage casual image saving (desktop + mobile)
+// Note: this only stops casual saving. Anyone can still get
+// the file via dev tools, so also watermark and downsize.
+// =========================================================
+
+function initImageProtection() {
+  var selector = ".gallery-item img, #lightbox-image";
+
+  function isProtected(el) {
+    return (
+      el &&
+      el.tagName === "IMG" &&
+      (el.closest(".gallery-item") || el.id === "lightbox-image")
+    );
+  }
+
+  // --- CSS (mobile long-press menu on iOS, text/image selection, dragging)
+  // Injected here so no stylesheet edit is needed.
+  var style = document.createElement("style");
+  style.textContent =
+    selector + " {" +
+    "  -webkit-touch-callout: none;" +   // iOS long-press "Save Image" menu
+    "  -webkit-user-select: none;" +
+    "  user-select: none;" +
+    "  -webkit-user-drag: none;" +
+    "}";
+  document.head.appendChild(style);
+
+  // --- Desktop: right-click / ctrl-click / trackpad menu
+  // --- Android: long-press also fires "contextmenu"
+  document.addEventListener("contextmenu", function (event) {
+    if (isProtected(event.target)) {
+      event.preventDefault();
+    }
+  });
+
+  // --- Desktop: drag image to desktop or another tab
+  document.addEventListener("dragstart", function (event) {
+    if (isProtected(event.target)) {
+      event.preventDefault();
+    }
+  });
+
+  // --- Mark images as non-draggable (covers older browsers)
+  function lockImages() {
+    document.querySelectorAll(selector).forEach(function (img) {
+      img.setAttribute("draggable", "false");
+    });
+  }
+
+  lockImages();
+
+  // --- Mobile: suppress the long-press selection/callout on touch devices
+  // (passive listeners so scrolling is not affected)
+  document.addEventListener(
+    "touchstart",
+    function (event) {
+      if (isProtected(event.target) && event.touches.length > 1) {
+        // Multi-finger gestures on the image are not needed; the lightbox
+        // is opened with a normal tap, so this does not affect it.
+        event.preventDefault();
+      }
+    },
+    { passive: false }
+  );
+}
+
+
+// =========================================================
 // Initialization
 // =========================================================
 
@@ -608,5 +677,6 @@ document.addEventListener("DOMContentLoaded", function () {
   shuffleGallery();
   initGalleryYearGuess();
   initLightbox();
+  initImageProtection();
 
 });
